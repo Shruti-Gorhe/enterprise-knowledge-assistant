@@ -1,9 +1,88 @@
+from typing import Optional, List
+
 from ollama import Client
+from langchain_core.outputs import LLMResult, Generation
+
+from ragas.llms.base import BaseRagasLLM
+from ragas.metrics.collections import Faithfulness, AnswerRelevancy
 
 from src.config import (
     OLLAMA_BASE_URL,
     EVALUATOR_MODEL,
 )
+
+
+class OllamaRagasLLM(BaseRagasLLM):
+
+    def __init__(self):
+        super().__init__()
+
+        self.client = Client(
+            host=OLLAMA_BASE_URL
+        )
+
+    def generate_text(
+        self,
+        prompt,
+        n: int = 1,
+        temperature: float = 0.01,
+        stop: Optional[List[str]] = None,
+        callbacks=None,
+    ) -> LLMResult:
+
+        if hasattr(prompt, "to_string"):
+            prompt_text = prompt.to_string()
+        else:
+            prompt_text = str(prompt)
+
+        response = self.client.chat(
+            model=EVALUATOR_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt_text,
+                }
+            ],
+            options={
+                "temperature": temperature,
+            },
+        )
+
+        text = response["message"]["content"]
+
+        return LLMResult(
+            generations=[
+                [
+                    Generation(
+                        text=text
+                    )
+                ]
+            ]
+        )
+
+    async def agenerate_text(
+        self,
+        prompt,
+        n: int = 1,
+        temperature: float = 0.01,
+        stop: Optional[List[str]] = None,
+        callbacks=None,
+    ) -> LLMResult:
+
+        return self.generate_text(
+            prompt=prompt,
+            n=n,
+            temperature=temperature,
+            stop=stop,
+            callbacks=callbacks,
+        )
+
+    def is_finished(
+        self,
+        response: LLMResult
+    ) -> bool:
+
+        return True
 
 
 def evaluator_agent(state):
@@ -12,159 +91,107 @@ def evaluator_agent(state):
     print("NODE 3: EVALUATOR AGENT")
     print("=" * 60)
 
-    print("Running local evaluation...")
+    print("Running RAGAS evaluation...")
 
     question = state["question"]
     answer = state["answer"]
-    contexts = state.get("retrieved_context", [])
-
-    context_text = "\n\n---\n\n".join(contexts)
-
-    prompt = f"""
-You are an evaluation agent for a Retrieval-Augmented Generation system.
-
-Evaluate the generated answer using ONLY the supplied context.
-
-Evaluate:
-
-1. FAITHFULNESS
-Does the answer contain claims that are supported by the context?
-
-2. RELEVANCY
-Does the answer directly answer the user's question?
-
-Give both scores between 0 and 1.
-
-QUESTION:
-{question}
-
-RETRIEVED CONTEXT:
-{context_text}
-
-GENERATED ANSWER:
-{answer}
-
-Return ONLY:
-
-FAITHFULNESS: 0.90
-RELEVANCY: 0.90
-
-Replace the example numbers with your actual scores.
-"""
+    contexts = state.get(
+        "retrieved_context",
+        []
+    )
 
     try:
 
-        client = Client(
-            host=OLLAMA_BASE_URL
+        ragas_llm = OllamaRagasLLM()
+
+        faithfulness_metric = Faithfulness(
+            llm=ragas_llm
         )
 
-        response = client.chat(
-            model=EVALUATOR_MODEL,
-            messages=[
+        relevancy_metric = AnswerRelevancy(
+            llm=ragas_llm
+        )
+
+        from ragas import EvaluationDataset, evaluate
+
+        dataset = EvaluationDataset.from_list(
+            [
                 {
-                    "role": "user",
-                    "content": prompt,
+                    "user_input": question,
+                    "response": answer,
+                    "retrieved_contexts": contexts,
                 }
+            ]
+        )
+
+        result = evaluate(
+            dataset,
+            metrics=[
+                faithfulness_metric,
+                relevancy_metric,
             ],
-            options={
-                "temperature": 0,
-            },
         )
 
-        raw_output = response["message"]["content"]
+        result_df = result.to_pandas()
 
-        print("\nRaw evaluator output:")
-        print(repr(raw_output))
-
-        faithfulness = None
-        relevancy = None
-
-        for line in raw_output.splitlines():
-
-            line = line.strip().upper()
-
-            if line.startswith("FAITHFULNESS:"):
-
-                try:
-                    faithfulness = float(
-                        line.split(":", 1)[1].strip()
-                    )
-                except ValueError:
-                    pass
-
-            elif line.startswith("RELEVANCY:"):
-
-                try:
-                    relevancy = float(
-                        line.split(":", 1)[1].strip()
-                    )
-                except ValueError:
-                    pass
-
-        if faithfulness is None:
-            faithfulness = 0.0
-
-        if relevancy is None:
-            relevancy = 0.0
-
-        faithfulness = max(
-            0.0,
-            min(1.0, faithfulness)
+        faithfulness_score = float(
+            result_df["faithfulness"].iloc[0]
         )
 
-        relevancy = max(
-            0.0,
-            min(1.0, relevancy)
+        relevancy_score = float(
+            result_df["answer_relevancy"].iloc[0]
+        )
+
+        print("\nRAGAS RESULTS")
+        print("-" * 40)
+
+        print(
+            f"Faithfulness: "
+            f"{faithfulness_score:.4f}"
+        )
+
+        print(
+            f"Answer Relevancy: "
+            f"{relevancy_score:.4f}"
         )
 
     except Exception as e:
 
-        print("\nEvaluator error:")
+        print("\nRAGAS evaluation error:")
+        print(type(e).__name__)
         print(e)
 
-        faithfulness = 0.0
-        relevancy = 0.0
+        faithfulness_score = 0.0
+        relevancy_score = 0.0
 
-    # ------------------------------------------------
-    # INTERPRETATION
-    # ------------------------------------------------
+    average_score = (
+        faithfulness_score +
+        relevancy_score
+    ) / 2
 
-    if (
-        faithfulness >= 0.8
-        and relevancy >= 0.8
-    ):
+    if average_score >= 0.8:
         interpretation = "Excellent"
 
-    elif (
-        faithfulness >= 0.6
-        and relevancy >= 0.6
-    ):
+    elif average_score >= 0.6:
         interpretation = "Good"
 
-    elif (
-        faithfulness >= 0.4
-        or relevancy >= 0.4
-    ):
+    elif average_score >= 0.4:
         interpretation = "Needs Improvement"
 
     else:
         interpretation = "Poor"
-
-    # ------------------------------------------------
-    # RESULTS
-    # ------------------------------------------------
 
     print("\nEVALUATION RESULTS")
     print("-" * 40)
 
     print(
         f"Faithfulness: "
-        f"{faithfulness:.4f}"
+        f"{faithfulness_score:.4f}"
     )
 
     print(
         f"Answer Relevancy: "
-        f"{relevancy:.4f}"
+        f"{relevancy_score:.4f}"
     )
 
     print(
@@ -173,11 +200,11 @@ Replace the example numbers with your actual scores.
     )
 
     return {
-        "faithfulness": faithfulness,
-        "answer_relevancy": relevancy,
+        "faithfulness": faithfulness_score,
+        "answer_relevancy": relevancy_score,
         "evaluation": {
-            "faithfulness": faithfulness,
-            "answer_relevancy": relevancy,
+            "faithfulness": faithfulness_score,
+            "answer_relevancy": relevancy_score,
             "interpretation": interpretation,
         },
     }

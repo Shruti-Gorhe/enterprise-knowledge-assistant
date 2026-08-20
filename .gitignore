@@ -1,5 +1,10 @@
 venv/
+ragas_env/
+
 .env
+.env.*
+!.env.example
+
 __pycache__/
 *.pyc
 *.pyo

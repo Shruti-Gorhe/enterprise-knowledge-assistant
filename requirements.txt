@@ -5,9 +5,15 @@ langchain-ollama
 langchain-huggingface
 langchain-chroma
 langchain-text-splitters
+
 langgraph
+
 chromadb
 pypdf
 sentence-transformers
 python-dotenv
 streamlit
+
+ollama
+ragas==0.4.3
+datasets
