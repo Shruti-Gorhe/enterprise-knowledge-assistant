@@ -1,186 +1,165 @@
 # Enterprise Knowledge Assistant
 
-An Agentic AI-powered Enterprise Knowledge Assistant that uses **Retrieval-Augmented Generation (RAG)** to answer questions from enterprise documents.
+An **Agentic AI Enterprise Knowledge Assistant** that answers questions
+from enterprise policy documents using **RAG, LangGraph, MCP, RAGAS,
+Ollama, and LangSmith**.
 
-The project combines **LangGraph** for agent orchestration, **ChromaDB** for vector search, **HuggingFace Embeddings** for semantic retrieval, **Ollama** for LLM inference, **RAGAS** for response evaluation, **MCP** for tool-based enterprise knowledge access, and **LangSmith** for observability and tracing.
+The system retrieves relevant information from enterprise PDFs, uses a
+LangGraph workflow to generate a grounded response, evaluates the
+response using RAGAS, and provides observability through LangSmith.
 
----
+------------------------------------------------------------------------
 
-## Table of Contents
+## 1. Project Overview
 
-- [Project Overview](#project-overview)
-- [Key Features](#key-features)
-- [Architecture Overview](#architecture-overview)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [RAG Design](#rag-design)
-- [LangGraph Design](#langgraph-design)
-- [MCP Integration](#mcp-integration)
-- [RAGAS Evaluation](#ragas-evaluation)
-- [Observability](#observability)
-- [Setup Instructions](#setup-instructions)
-- [Configuration](#configuration)
-- [Document Ingestion](#document-ingestion)
-- [Execution](#execution)
-- [Sample Input](#sample-input)
-- [Expected Output](#expected-output)
-- [Evidence and Screenshots](#evidence-and-screenshots)
-- [Testing](#testing)
-- [Project Outcome](#project-outcome)
+The Enterprise Knowledge Assistant is designed to answer
+natural-language questions using information contained in enterprise
+documents.
 
----
+Instead of relying only on the LLM's pretrained knowledge, the
+application follows a Retrieval-Augmented Generation workflow:
 
-# Project Overview
+1.  Enterprise PDF documents are loaded.
+2.  Documents are split into smaller chunks.
+3.  Chunks are converted into embeddings.
+4.  Embeddings are stored in ChromaDB.
+5.  A user question is semantically matched against the knowledge base.
+6.  The LangGraph Retriever Agent obtains the relevant context through
+    the MCP integration.
+7.  The Response Agent generates an answer grounded in the retrieved
+    context.
+8.  The Evaluator Agent evaluates the generated answer using RAGAS.
+9.  LangSmith provides end-to-end tracing and observability.
 
-The Enterprise Knowledge Assistant is designed to answer questions using information contained in enterprise documents.
+### Knowledge Sources
 
-Instead of relying only on the LLM's pretrained knowledge, the system follows a Retrieval-Augmented Generation approach:
+The project uses enterprise documents such as:
 
-1. The user asks a question.
-2. Relevant information is retrieved from enterprise documents.
-3. The retrieved context is provided to the LLM.
-4. The LLM generates a grounded response.
-5. The response is evaluated using RAGAS.
-6. The complete workflow is observable through LangSmith.
+-   `Remote_Work_Policy.pdf`
+-   `Employee_Handbook.pdf`
 
-Example enterprise documents include:
+------------------------------------------------------------------------
 
-- `Remote_Work_Policy.pdf`
-- `Employee_Handbook.pdf`
+## 2. Key Features
 
-The application is implemented as a LangGraph workflow consisting of three primary agents:
+-   Enterprise document question answering
+-   Retrieval-Augmented Generation (RAG)
+-   Semantic search over enterprise documents
+-   ChromaDB vector database
+-   HuggingFace embeddings
+-   LangGraph agent orchestration
+-   Custom MCP server
+-   MCP tool-based enterprise knowledge retrieval
+-   Active MCP usage by the LangGraph Retriever Agent
+-   Ollama LLM inference
+-   `gpt-oss:120b-cloud` for response generation
+-   RAGAS evaluation
+-   Faithfulness evaluation
+-   Answer Relevancy evaluation
+-   LangSmith tracing and observability
+-   Node-by-node LangGraph execution visibility
+-   Source attribution
+-   Modular Python architecture
 
-```text
+------------------------------------------------------------------------
+
+## 3. Architecture Overview
+
+``` mermaid
+flowchart TD
+    A[User Question] --> B[LangGraph Orchestrator]
+    B --> C[Retriever Agent]
+    C --> D[MCP Client]
+    D --> E[Custom MCP Server]
+    E --> F[search_enterprise_knowledge]
+    F --> G[ChromaDB Vector Search]
+    G --> H[Relevant Document Chunks]
+    H --> C
+    C --> I[Response Agent]
+    I --> J[gpt-oss:120b-cloud]
+    J --> K[Evaluator Agent]
+    K --> L[RAGAS]
+    L --> M[Final Answer + Evaluation]
+    B -. tracing .-> N[LangSmith]
+```
+
+### High-Level Flow
+
+``` text
 User Question
+      |
+      v
+LangGraph
       |
       v
 Retriever Agent
       |
       v
+MCP Client
+      |
+      v
+MCP Server
+      |
+      v
+search_enterprise_knowledge
+      |
+      v
+ChromaDB
+      |
+      v
+Retrieved Context
+      |
+      v
 Response Agent
+      |
+      v
+gpt-oss:120b-cloud
       |
       v
 Evaluator Agent
       |
       v
+RAGAS
+      |
+      v
 Final Answer
 ```
 
----
+------------------------------------------------------------------------
 
-# Key Features
+## 4. Technology Stack
 
-- Enterprise document question answering
-- Retrieval-Augmented Generation (RAG)
-- LangGraph-based agent orchestration
-- Semantic document retrieval
-- ChromaDB vector database
-- HuggingFace embedding model
-- Ollama-based LLM inference
-- RAGAS evaluation
-- Faithfulness evaluation
-- Answer Relevancy evaluation
-- MCP server integration
-- MCP knowledge retrieval tools
-- LangSmith observability
-- LangGraph node-by-node execution tracing
-- Source attribution
-- Modular Python architecture
+  Technology             Purpose
+  ---------------------- ------------------------------
+  Python                 Core application
+  LangChain              LLM and RAG components
+  LangGraph              Agent workflow orchestration
+  ChromaDB               Vector database
+  HuggingFace            Document embeddings
+  Ollama                 LLM inference interface
+  `gpt-oss:120b-cloud`   Response generation
+  `qwen3:4b`             Evaluation model
+  RAGAS                  RAG evaluation
+  MCP                    Tool-based knowledge access
+  LangSmith              Observability and tracing
+  PyPDF                  PDF document loading
+  python-dotenv          Environment configuration
 
----
+------------------------------------------------------------------------
 
-# Architecture Overview
+## 5. Project Structure
 
-```text
-                           +----------------+
-                           |      USER      |
-                           +-------+--------+
-                                   |
-                                   v
-                        +----------------------+
-                        |      LangGraph       |
-                        |     Orchestrator     |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |   Retriever Agent    |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |      ChromaDB        |
-                        |    Vector Search     |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |    Response Agent    |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |     Ollama LLM       |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |   Evaluator Agent    |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |       RAGAS          |
-                        |     Evaluation       |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        |     Final Answer     |
-                        +----------------------+
-
-             +------------------+     +------------------+
-             |    MCP Server    |     |    LangSmith     |
-             | Knowledge Tools  |     |  Observability   |
-             +------------------+     +------------------+
-```
-
----
-
-# Technology Stack
-
-| Technology | Purpose |
-|---|---|
-| Python | Core application development |
-| LangChain | LLM and RAG components |
-| LangGraph | Agent workflow orchestration |
-| ChromaDB | Vector database |
-| HuggingFace | Text embeddings |
-| Ollama | LLM inference |
-| RAGAS | RAG evaluation |
-| MCP | Model Context Protocol integration |
-| LangSmith | Observability and tracing |
-| PyPDF | PDF document processing |
-| Python-dotenv | Environment configuration |
-
----
-
-# Project Structure
-
-```text
+``` text
 enterprise-knowledge-assistant/
 │
 ├── data/
-│   └── documents/
-│       ├── Remote_Work_Policy.pdf
-│       └── Employee_Handbook.pdf
+│   ├── Remote_Work_Policy.pdf
+│   └── Employee_Handbook.pdf
 │
-├── screenshots/
-│   ├── EKA1_langsmith_tracing.png
-│   ├── EKA2_application_startup.png
-│   ├── EKA3_ragas_results.png
-│   ├── EKA4_final_output.png
-│   └── EKA5_graph_execution.png
+├── chroma_db/
+│
+├── mcp_server/
+│   └── server.py
 │
 ├── src/
 │   ├── agents/
@@ -195,14 +174,21 @@ enterprise-knowledge-assistant/
 │   │   └── retriever.py
 │   │
 │   ├── graph.py
-│   └── state.py
+│   ├── state.py
+│   └── config.py
 │
 ├── scripts/
 │   ├── ingest.py
 │   └── run.py
 │
-├── mcp_server/
-│   └── server.py
+├── screenshots/
+│   ├── EKA1.png
+│   ├── EKA2.png
+│   ├── EKA3.png
+│   ├── EKA4.png
+│   ├── EKA5.png
+│   ├── EKA6.png
+│   └── EKA7.png
 │
 ├── .env
 ├── .gitignore
@@ -210,142 +196,135 @@ enterprise-knowledge-assistant/
 └── README.md
 ```
 
----
+> Keep `.env` out of source control. API keys and secrets must never be
+> committed to GitHub.
 
-# RAG Design
+------------------------------------------------------------------------
 
-The project uses Retrieval-Augmented Generation to ground LLM responses in enterprise documents.
+# 6. RAG Design
 
-```text
-Enterprise PDF Documents
-          |
-          v
-    Document Loading
-          |
-          v
-      Chunking
-          |
-          v
-  Embedding Generation
-          |
-          v
-       ChromaDB
-          |
-          v
-   Semantic Retrieval
-          |
-          v
- Relevant Document Chunks
-          |
-          v
-       Ollama LLM
-          |
-          v
-     Final Answer
-```
+## 6.1 Document Source
 
-## Document Source
+The knowledge base contains enterprise PDF documents:
 
-The knowledge base contains enterprise PDF documents such as:
-
-```text
+``` text
 Remote_Work_Policy.pdf
 Employee_Handbook.pdf
+Leave_Policy.pdf
 ```
 
-These documents contain organizational policies and employee-related information used by the assistant to answer user queries.
+The PDFs are loaded using `pypdf`.
 
-## Document Loading
+Each page is processed with source and page metadata so retrieved
+information can be associated with its originating document.
 
-PDF files are loaded and their text is extracted using `pypdf`.
+------------------------------------------------------------------------
 
-The ingestion pipeline processes the documents page by page before preparing them for retrieval.
+## 6.2 Document Loading
 
-Example ingestion output:
+The ingestion pipeline is:
 
-```text
-============================================================
-ENTERPRISE KNOWLEDGE ASSISTANT - INGESTION
-============================================================
-
-Loaded 11 pages.
-Created 39 chunks.
-```
-
-## Chunking Strategy
-
-The extracted document text is split into smaller overlapping chunks using a recursive text splitter.
-
-Chunking allows the retriever to search relevant sections instead of passing complete documents to the LLM.
-
-This helps to:
-
-- Improve retrieval precision
-- Reduce unnecessary context
-- Keep prompts manageable
-- Preserve meaningful sections of documents
-
-## Embedding Model
-
-The project uses **HuggingFace Embeddings** to convert document chunks into vector representations.
-
-The same embedding configuration is used during retrieval so that the user's question can be compared semantically with the stored document chunks.
-
-Embeddings are generated locally.
-
-## Vector Database
-
-**ChromaDB** is used as the vector database.
-
-The document chunks and their embeddings are stored in ChromaDB.
-
-When the user asks a question:
-
-```text
-User Question
+``` text
+PDF Documents
       |
       v
-Question Embedding
+PyPDF
       |
       v
-ChromaDB Similarity Search
+Page-level Text Extraction
       |
       v
-Relevant Document Chunks
+Source + Page Metadata
 ```
 
-The retrieved chunks are then passed to the Response Agent.
+The loader extracts text page by page and stores:
 
-## Retrieval
+-   document text
+-   source filename
+-   page number
 
-The Retriever Agent performs semantic search against the ChromaDB vector store.
+------------------------------------------------------------------------
 
-For example:
+## 6.3 Chunking Strategy
 
-```text
-Question:
-What are the key requirements for employees working remotely?
+The project uses `RecursiveCharacterTextSplitter`.
+
+Current configuration:
+
+``` text
+chunk_size    = 800
+chunk_overlap = 120
 ```
 
-The retriever can return information related to:
+The overlap helps preserve context between neighboring chunks.
 
-- Approved work locations
-- Information security
-- Health and safety
-- Business continuity
-- Availability and punctuality
+Chunking helps to:
 
-The retrieved information is passed to the Response Agent as context.
+-   improve retrieval precision
+-   reduce unnecessary context
+-   keep prompts manageable
+-   preserve meaningful policy sections
 
----
+------------------------------------------------------------------------
 
-# LangGraph Design
+## 6.4 Embedding Model
 
-LangGraph is used to orchestrate the Agentic AI workflow.
+The project uses:
 
-The application contains three main nodes:
+``` text
+BAAI/bge-small-en-v1.5
+```
 
-```text
+through `HuggingFaceEmbeddings`.
+
+Embeddings are generated locally using CPU configuration and normalized
+before similarity search.
+
+------------------------------------------------------------------------
+
+## 6.5 Vector Database
+
+The project uses:
+
+``` text
+ChromaDB
+```
+
+Collection:
+
+``` text
+enterprise_knowledge
+```
+
+Persisted vector database:
+
+``` text
+./chroma_db
+```
+
+------------------------------------------------------------------------
+
+## 6.6 Retrieval
+
+The Retriever performs semantic similarity search against ChromaDB.
+
+The current default retrieval count is:
+
+``` text
+TOP_K = 4
+```
+
+The retrieved chunks are passed to the Response Agent as context.
+
+------------------------------------------------------------------------
+
+# 7. LangGraph Design
+
+LangGraph orchestrates the Agentic AI workflow.
+
+### Graph
+
+``` text
 START
   |
   v
@@ -361,70 +340,94 @@ Evaluator Agent
 END
 ```
 
-## Node 1 — Retriever Agent
+## 7.1 Node 1 --- Retriever Agent
 
 ### Responsibility
 
-The Retriever Agent searches the enterprise knowledge base for relevant information.
-
-### Input
-
-```text
-User Question
-```
+Retrieves relevant enterprise knowledge for the user's question.
 
 ### Processing
 
-```text
+``` text
 Question
    |
    v
-Semantic Search
+MCP Client
    |
    v
-ChromaDB
+MCP Server
    |
    v
-Relevant Documents
+search_enterprise_knowledge
+   |
+   v
+RAG / ChromaDB
+   |
+   v
+Relevant Context
 ```
 
 ### Output
 
-Relevant document chunks and source information.
+-   Retrieved context
+-   Source information
 
-## Node 2 — Response Agent
+The Retriever Agent actively calls the MCP tool during normal LangGraph
+execution.
 
-### Responsibility
+------------------------------------------------------------------------
 
-The Response Agent generates the final answer using the retrieved enterprise context.
-
-The agent receives:
-
-- User question
-- Retrieved document context
-
-The configured Ollama LLM generates a response grounded in the retrieved information.
-
-## Node 3 — Evaluator Agent
+## 7.2 Node 2 --- Response Agent
 
 ### Responsibility
 
-The Evaluator Agent evaluates the generated response using RAGAS.
+Generates the final answer using the user question and retrieved
+enterprise context.
 
-The evaluator calculates:
+### Model
 
-- Faithfulness
-- Answer Relevancy
+``` text
+gpt-oss:120b-cloud
+```
 
-The scores are added to the final application result.
+### Input
 
----
+-   User question
+-   Retrieved context
 
-# MCP Integration
+### Output
 
-The project includes a **Model Context Protocol (MCP)** server.
+A grounded natural-language response.
 
-The MCP server exposes enterprise knowledge retrieval as standardized tools.
+------------------------------------------------------------------------
+
+## 7.3 Node 3 --- Evaluator Agent
+
+### Responsibility
+
+Evaluates the generated answer.
+
+### Metrics
+
+-   Faithfulness
+-   Answer Relevancy
+
+The scores and interpretation are added to the final application result.
+
+------------------------------------------------------------------------
+
+# 8. MCP Integration
+
+The project includes a **custom MCP server** for enterprise knowledge
+retrieval.
+
+## MCP Server
+
+``` text
+mcp_server/server.py
+```
+
+The MCP server is implemented using the MCP Python SDK.
 
 ## MCP Tools
 
@@ -432,7 +435,9 @@ The MCP server exposes enterprise knowledge retrieval as standardized tools.
 
 Searches the enterprise knowledge base using a natural-language query.
 
-```text
+Example:
+
+``` text
 search_enterprise_knowledge(
     query="What are the key requirements for employees working remotely?"
 )
@@ -440,220 +445,243 @@ search_enterprise_knowledge(
 
 ### `get_document_sources`
 
-Returns source/document information associated with the enterprise knowledge base.
+Returns available enterprise document sources.
 
-## Running the MCP Server
+------------------------------------------------------------------------
+
+## 8.1 Active MCP Usage by LangGraph
+
+This is a key project requirement.
+
+The MCP integration is **actively used during normal LangGraph
+execution**. It is not only a standalone server.
+
+The execution flow is:
+
+``` text
+LangGraph Retriever Agent
+          |
+          v
+      MCP Client
+          |
+          v
+      MCP Server
+          |
+          v
+search_enterprise_knowledge
+          |
+          v
+       RAG Search
+          |
+          v
+ Retrieved Context
+```
+
+The application output explicitly confirms the invocation:
+
+``` text
+NODE 1: RETRIEVER AGENT
+
+Calling MCP tool: search_enterprise_knowledge
+MCP retrieval completed.
+```
+
+This demonstrates that a LangGraph node actively uses the MCP
+integration during execution.
+
+------------------------------------------------------------------------
+
+## 8.2 Verify MCP Tools
 
 From the project root:
 
-```bash
-python -m mcp_server.server
-```
-
-The available tools can be verified using:
-
-```bash
+``` cmd
 python -c "import asyncio; from mcp_server.server import mcp; tools=asyncio.run(mcp.list_tools()); print([t.name for t in tools])"
 ```
 
-Expected output:
+Expected:
 
-```text
+``` text
 ['search_enterprise_knowledge', 'get_document_sources']
 ```
 
----
+------------------------------------------------------------------------
 
-# RAGAS Evaluation
+# 9. RAGAS Evaluation
 
-RAGAS is used to evaluate the quality of generated responses.
+RAGAS evaluates the quality of the generated response.
 
 ## Metrics Collected
 
 ### Faithfulness
 
-Measures whether the generated answer is supported by the retrieved context.
+Measures whether the generated answer is supported by the retrieved
+context.
 
 ### Answer Relevancy
 
-Measures how relevant the generated response is to the user's question.
+Measures whether the generated response addresses the user's question.
 
 ## Evaluation Flow
 
-```text
+``` text
 Retrieved Context
-        |
-        v
+       |
+       v
 Generated Answer
-        |
-        +--------------------+
-        |                    |
-        v                    v
+       |
+       +----------------------+
+       |                      |
+       v                      v
 Faithfulness          Answer Relevancy
-        |                    |
-        +---------+----------+
+       |                      |
+       +----------+-----------+
                   |
                   v
-           RAGAS Evaluation
-                  |
-                  v
-          Evaluation Results
+             RAGAS Result
 ```
 
-## Evaluation Results
+## Example Evaluation
 
-Example result obtained from the application:
+A recent successful application execution produced:
 
-```text
-RAGAS SCORES
-----------------------------------------
-Faithfulness: 1.0000
-Answer Relevancy: 1.0000
+``` text
+Faithfulness: 0.9500
+Answer Relevancy: 0.9500
 Interpretation: Excellent
 ```
 
-| Metric | Score | Interpretation |
-|---|---:|---|
-| Faithfulness | 1.0000 | Excellent grounding in retrieved context |
-| Answer Relevancy | 1.0000 | Highly relevant to the user question |
+Scores can vary depending on the question, retrieved context, generated
+response, evaluation model, and evaluation conditions.
 
-Scores can vary depending on the question, retrieved context, LLM response, and evaluation conditions.
+------------------------------------------------------------------------
 
----
+# 10. LangSmith Observability
 
-# Observability
+LangSmith provides observability into the Agentic AI workflow.
 
-LangSmith is integrated into the application to provide observability into the Agentic AI workflow.
+It allows inspection of:
 
-LangSmith can be used to inspect:
-
-- LangGraph execution
-- Individual node executions
-- LLM calls
-- Inputs and outputs
-- Execution latency
-- Errors
-- Workflow behavior
+-   LangGraph execution
+-   Individual graph nodes
+-   LLM calls
+-   Inputs and outputs
+-   Execution latency
+-   Evaluation results
+-   Workflow behavior
 
 Example configuration:
 
-```text
+``` env
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PROJECT=enterprise-knowledge-assistant
 ```
 
-The API key is stored in `.env` and should not be committed to source control.
+Do not commit the API key to GitHub.
 
----
+------------------------------------------------------------------------
 
-# Setup Instructions
+# 11. Setup Instructions
 
 ## Prerequisites
 
-- Python 3.10 or higher
-- Ollama
-- Git
-- Required Python dependencies
+-   Python 3.10+
+-   Ollama
+-   Git
 
-## Create a Virtual Environment
+## Create Virtual Environment
 
-Windows:
+### Windows
 
-```bash
+``` cmd
 python -m venv venv
-venv\Scriptsctivate
+venv\Scripts\activate
 ```
 
-Linux/macOS:
+### Linux/macOS
 
-```bash
+``` bash
+python3 -m venv venv
 source venv/bin/activate
 ```
 
 ## Install Dependencies
 
-```bash
+``` cmd
 python -m pip install -r requirements.txt
 ```
 
-## Configure Environment Variables
+## Configure Environment
 
 Create `.env` in the project root:
 
-```text
+``` env
 OLLAMA_BASE_URL=http://localhost:11434
+
 LLM_MODEL=gpt-oss:120b-cloud
+EVALUATOR_MODEL=qwen3:4b
+
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+
+VECTOR_DB_PATH=./chroma_db
+COLLECTION_NAME=enterprise_knowledge
+TOP_K=4
 
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PROJECT=enterprise-knowledge-assistant
 ```
 
-Do not commit `.env` to GitHub.
+------------------------------------------------------------------------
 
----
+# 12. Document Ingestion
 
-# Configuration
+Place the enterprise PDFs inside:
 
-| Variable | Purpose |
-|---|---|
-| `OLLAMA_BASE_URL` | Ollama server URL |
-| `LLM_MODEL` | LLM used for response generation |
-| `LANGSMITH_TRACING` | Enables LangSmith tracing |
-| `LANGSMITH_API_KEY` | LangSmith authentication |
-| `LANGSMITH_PROJECT` | LangSmith project name |
-
----
-
-# Document Ingestion
-
-Place enterprise PDF documents inside:
-
-```text
+``` text
 data/
-└── documents/
-    ├── Remote_Work_Policy.pdf
-    └── Employee_Handbook.pdf
+├── Remote_Work_Policy.pdf
+└── Employee_Handbook.pdf
 ```
 
 Run:
 
-```bash
+``` cmd
 python -m scripts.ingest
 ```
 
-Example output:
+The ingestion pipeline is:
 
-```text
-============================================================
-ENTERPRISE KNOWLEDGE ASSISTANT - INGESTION
-============================================================
-
-Loaded 11 pages.
-Created 39 chunks.
+``` text
+PDF
+ |
+ v
+Text Extraction
+ |
+ v
+Chunking
+ |
+ v
+Embedding Generation
+ |
+ v
+ChromaDB
 ```
 
-The documents are:
+------------------------------------------------------------------------
 
-1. Loaded
-2. Split into chunks
-3. Converted into embeddings
-4. Stored in ChromaDB
+# 13. Run the Application
 
----
+After ingestion:
 
-# Execution
-
-After document ingestion:
-
-```bash
+``` cmd
 python -m scripts.run
 ```
 
-The application displays:
+You will see:
 
-```text
+``` text
 ============================================================
 ENTERPRISE KNOWLEDGE ASSISTANT
 ============================================================
@@ -663,260 +691,151 @@ Ask your question:
 
 Enter a natural-language question.
 
----
+------------------------------------------------------------------------
 
-# Sample Input
+# 14. Sample Questions
 
-```text
+``` text
 What are the key requirements for employees working remotely?
 ```
 
-Other useful questions:
-
-```text
+``` text
 What is the remote work policy?
+```
 
+``` text
 What are the rules regarding working from another city or country?
+```
 
-What happens if an employee has an internet or power failure while working remotely?
-
+``` text
 What information security requirements apply to remote workers?
 ```
 
----
+``` text
+What should an employee do if internet or power issues prevent them from working remotely?
+```
 
-# Expected Output
+------------------------------------------------------------------------
 
-A typical execution follows:
+# 15. Expected Execution
 
-```text
+A successful run follows this sequence:
+
+``` text
 ============================================================
 NODE 1: RETRIEVER AGENT
 ============================================================
 
-Question:
-What are the key requirements for employees working remotely?
-
-Retrieved documents.
+Calling MCP tool: search_enterprise_knowledge
+MCP retrieval completed.
 
 ============================================================
 NODE 2: RESPONSE AGENT
 ============================================================
 
 Generated answer:
-The key requirements for employees working remotely include
-approved work locations, information security, health and
-safety practices, business continuity, and maintaining
-availability during required working hours.
+...
 
 ============================================================
 NODE 3: EVALUATOR AGENT
 ============================================================
 
-Running RAGAS evaluation...
+Running local evaluation...
 
-RAGAS SCORES
+EVALUATION RESULTS
 ----------------------------------------
-Faithfulness: 1.0000
-Answer Relevancy: 1.0000
+Faithfulness: 0.9500
+Answer Relevancy: 0.9500
 Interpretation: Excellent
-
-============================================================
-FINAL RESULT
-============================================================
-
-QUESTION:
-What are the key requirements for employees working remotely?
-
-ANSWER:
-The key requirements for employees working remotely include
-approved work locations, information security, health and
-safety practices, business continuity, and maintaining
-availability during required working hours.
-
-SOURCES:
-- Remote_Work_Policy.pdf
-- Employee_Handbook.pdf
 ```
 
-The exact generated answer and evaluation scores may vary.
+The final result contains:
 
----
+-   Question
+-   Generated answer
+-   Sources
+-   RAGAS scores
+-   Evaluation interpretation
 
-# Evidence and Screenshots
+------------------------------------------------------------------------
 
-Place the screenshot files inside the `screenshots/` directory using these filenames.
+# 16. Evidence and Screenshots
 
-## Img EKA1 — Observability: LangSmith Tracing
+Place all screenshots inside the `screenshots/` directory.
 
-![Img EKA1 - LangSmith Observability](screenshots/EKA1.png)
+## EKA1 --- LangSmith Observability
 
-**Img EKA1 — LangSmith Observability and Tracing**
+Shows LangSmith tracing and observability of the LangGraph workflow.
 
-## Img EKA2 — Application Startup
+![EKA1 - LangSmith Observability](screenshots/EKA1.png)
 
-![Img EKA2 - Application Startup](screenshots/EKA2.png)
+## EKA2 --- Application Startup
 
-**Img EKA2 — Application Startup**
+Shows application startup and the user question.
 
-## Img EKA3 — RAGAS Evaluation Results
+![EKA2 - Application Startup](screenshots/EKA2.png)
 
-![Img EKA3 - RAGAS Evaluation Results](screenshots/EKA3.png)
+## EKA3 --- RAGAS Evaluation Results
 
-**Img EKA3 — RAGAS Evaluation Results**
+Shows RAGAS evaluation results.
 
-## Img EKA4 — Final Output Generated by the Application
+![EKA3 - RAGAS Evaluation](screenshots/EKA3.png)
 
-![Img EKA4 - Final Application Output](screenshots/EKA4.png)
+## EKA4 --- Final Application Output
 
-**Img EKA4 — Final Application Output**
+Shows the final answer generated by the application.
 
-## Img EKA5 — Graph Execution Trace
+![EKA4 - Final Output](screenshots/EKA4.png)
 
-The LangGraph workflow executes:
+## EKA5 --- MCP Tool Invocation
 
-```text
-NODE 1: RETRIEVER AGENT
-        |
-        v
-NODE 2: RESPONSE AGENT
-        |
-        v
-NODE 3: EVALUATOR AGENT
+Shows the Retriever Agent invoking:
+
+``` text
+Calling MCP tool: search_enterprise_knowledge
+MCP retrieval completed.
 ```
 
-![Img EKA5 - Graph Execution Trace](screenshots/EKA5.png)
+This is direct evidence that MCP is actively used during graph
+execution.
 
-**Img EKA5 — LangGraph Node-by-Node Execution**
+![EKA5 - MCP Tool Invocation](screenshots/EKA5.png)
 
----
+## EKA6 --- RAGAS Evaluation and Final Result
 
-# Testing
+Shows the Evaluator Agent, Faithfulness, Answer Relevancy,
+interpretation, and generated result.
 
-Recommended test questions:
+![EKA6 - RAGAS Evaluation](screenshots/EKA6.png)
 
-```text
-1. What is the remote work policy?
+## EKA7 --- Final Output, Sources and RAGAS
 
-2. What are the key requirements for employees working remotely?
+Shows the final answer, MCP source information, and RAGAS scores.
 
-3. What are the rules regarding working from another city or country?
+![EKA7 - Final Output and RAGAS](screenshots/EKA7.png)
 
-4. What happens if an employee has an internet or power failure while working remotely?
+------------------------------------------------------------------------
 
-5. What information security requirements apply to remote workers?
-```
+## 17. Requirement Compliance
 
-For every query:
+The project satisfies the specified Enterprise Knowledge Assistant requirements across RAG, LangGraph, MCP, evaluation, observability, and final response generation.
 
-```text
-Question
-   |
-   v
-Document Retrieval
-   |
-   v
-Answer Generation
-   |
-   v
-RAGAS Evaluation
-   |
-   v
-Final Response
-```
+| Requirement | Status | Implementation |
+|---|---|---|
+| Enterprise Knowledge Source | **Satisfied** | Enterprise PDF documents are loaded with PyPDF, including `Remote_Work_Policy.pdf` and `Employee_Handbook.pdf`, with source and page metadata retained. |
+| RAG Implementation | **Satisfied** | Documents are chunked using recursive text splitting (`chunk_size=800`, `chunk_overlap=120`), embedded with `BAAI/bge-small-en-v1.5`, stored in ChromaDB, retrieved through semantic search, and passed to the LLM for grounded response generation. |
+| LangGraph | **Satisfied** | A `StateGraph` orchestrates the `Retriever Agent → Response Agent → Evaluator Agent` workflow using shared state. |
+| MCP Integration | **Satisfied** | A custom MCP server exposes `search_enterprise_knowledge` and `get_document_sources`. The LangGraph Retriever Agent actively calls the MCP tool during execution to retrieve enterprise knowledge. |
+| RAGAS Evaluation | **Satisfied** | The Evaluator Agent calculates Faithfulness and Answer Relevancy and displays the evaluation results and interpretation. Example result: **0.95 Faithfulness, 0.95 Answer Relevancy — Excellent**. |
+| Observability | **Satisfied** | LangSmith tracing provides visibility into LangGraph execution, individual nodes, LLM calls, inputs, outputs, latency, retrieved context, and evaluation results. |
+| Graph Execution Trace | **Satisfied** | Node-by-node execution is captured for the Retriever Agent, Response Agent, and Evaluator Agent in both application output and LangSmith. |
+| Final Application Output | **Satisfied** | The application produces a grounded final answer containing the user question, generated response, source information, RAGAS scores, and evaluation interpretation. |
 
----
+### Overall Status
 
-# End-to-End Workflow
+**All specified project requirements are implemented and satisfied.**
 
-```text
-                         USER QUESTION
-                               |
-                               v
-                     +-------------------+
-                     |   Retriever Agent |
-                     +---------+---------+
-                               |
-                               v
-                     +-------------------+
-                     |     ChromaDB      |
-                     |   Vector Search   |
-                     +---------+---------+
-                               |
-                               v
-                     +-------------------+
-                     |   Response Agent  |
-                     +---------+---------+
-                               |
-                               v
-                     +-------------------+
-                     |    Ollama LLM     |
-                     +---------+---------+
-                               |
-                               v
-                     +-------------------+
-                     |  Evaluator Agent  |
-                     +---------+---------+
-                               |
-                               v
-                     +-------------------+
-                     |       RAGAS       |
-                     +---------+---------+
-                               |
-                               v
-                         FINAL ANSWER
+The complete workflow is:
 
-       +--------------------+       +--------------------+
-       |     MCP Server     |       |     LangSmith      |
-       | Enterprise Tools   |       |   Observability    |
-       +--------------------+       +--------------------+
-```
+`Enterprise PDFs → RAG Retrieval → MCP Tool → LangGraph Agents → LLM Response → RAGAS Evaluation → LangSmith Observability → Final Output`
 
----
-
-# Project Outcome
-
-The Enterprise Knowledge Assistant demonstrates an end-to-end Agentic AI application combining retrieval, generation, evaluation, tool integration, workflow orchestration, and observability.
-
-The system is capable of:
-
-1. Loading enterprise PDF documents.
-2. Splitting documents into meaningful chunks.
-3. Generating semantic embeddings.
-4. Storing embeddings in ChromaDB.
-5. Retrieving relevant enterprise knowledge.
-6. Generating grounded responses using an LLM.
-7. Orchestrating multiple agents using LangGraph.
-8. Evaluating responses using RAGAS.
-9. Exposing enterprise knowledge through MCP tools.
-10. Providing source information for retrieved content.
-11. Providing node-by-node execution visibility.
-12. Monitoring the application using LangSmith.
-
----
-
-# Conclusion
-
-This project demonstrates how modern Agentic AI components can be integrated to build an enterprise-focused knowledge assistant.
-
-```text
-RAG
-+
-LangGraph
-+
-LLM
-+
-ChromaDB
-+
-HuggingFace Embeddings
-+
-RAGAS
-+
-MCP
-+
-LangSmith
-=
-Enterprise Knowledge Assistant
-```
-
-The resulting system provides a complete workflow for enterprise question answering with **retrieval, grounded generation, automated evaluation, MCP-based tool access, and end-to-end observability**.
