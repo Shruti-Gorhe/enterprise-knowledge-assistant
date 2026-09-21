@@ -17,3 +17,4 @@ streamlit
 ollama
 ragas==0.4.3
 datasets
+mcp
