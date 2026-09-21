@@ -1,4 +1,5 @@
 .venv/
+venv/
 ragas_env/
 
 .env
