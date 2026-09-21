@@ -57,3 +57,8 @@ def test_env_file_is_not_tracked_by_this_test_layout():
         return
     text = gitignore.read_text(encoding="utf-8")
     assert ".env" in text, ".gitignore should exclude .env"
+
+
+
+def test_autoheal_demo_failure():
+    assert False, "AUTOHEAL_DEMO: intentional CI failure for RCA and remediation testing"
