@@ -32,14 +32,19 @@ jobs:
           pip install pytest
 
       - name: Run contract and security tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          pytest -q tests/test_rag.py \
-                   tests/test_mcp.py \
-                   tests/test_agents.py \
-                   tests/test_security.py \
-                   tests/test_evaluation.py
+          pytest -q \
+            tests/test_rag.py \
+            tests/test_mcp.py \
+            tests/test_agents.py \
+            tests/test_security.py \
+            tests/test_evaluation.py
 
       - name: Validate evaluation dataset
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           python evaluation/run_evaluation.py
 
@@ -70,11 +75,24 @@ jobs:
           import json
           from pathlib import Path
 
-          dataset = json.loads(Path("evaluation/dataset.json").read_text())
+          dataset = json.loads(
+              Path("evaluation/dataset.json").read_text()
+          )
+
           assert len(dataset) >= 10
-          required = {"id", "category", "question", "expected_behavior"}
+
+          required = {
+              "id",
+              "category",
+              "question",
+              "expected_behavior",
+          }
+
           assert all(required <= set(x) for x in dataset)
-          print(f"Evaluation dataset OK: {len(dataset)} cases")
+
+          print(
+              f"Evaluation dataset OK: {len(dataset)} cases"
+          )
           PY
 
       - name: Report CI state
