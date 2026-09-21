@@ -45,3 +45,39 @@ def test_retriever_module_importable():
     path = ROOT / "src" / "rag" / "retriever.py"
     spec = importlib.util.spec_from_file_location("eka_retriever_contract", path)
     assert spec is not None and spec.loader is not None
+
+
+def test_retriever_returns_contexts_and_sources(monkeypatch):
+    from src.rag import retriever
+
+    class FakeDocument:
+        page_content = "Remote work is allowed."
+        metadata = {
+            "source": "Remote_Work_Policy.pdf",
+            "page": 2,
+        }
+
+    class FakeVectorStore:
+        def similarity_search_with_score(self, question, k):
+            assert question == "What is the remote work policy?"
+            assert k == 4
+            return [(FakeDocument(), 0.15)]
+
+    monkeypatch.setattr(
+        retriever,
+        "get_vectorstore",
+        lambda: FakeVectorStore(),
+    )
+
+    contexts, sources = retriever.retrieve_documents(
+        "What is the remote work policy?"
+    )
+
+    assert contexts == ["Remote work is allowed."]
+    assert sources == [
+        {
+            "source": "Remote_Work_Policy.pdf",
+            "page": 2,
+            "score": 0.15,
+        }
+    ]
